@@ -1,0 +1,180 @@
+---
+title: "Sim Card Packages Analysis"
+author: "Nahim Rimon"
+date: "08-04-2023"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Libraries & Dataset Input
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+library(funModeling)
+library(Hmisc)
+```
+
+```{r}
+sim_data <- read.csv("SIMCard Data.csv")
+head(sim_data)
+```
+## Quick Data Statistics
+```{r}
+# All the information about dataset
+describe(sim_data)
+```
+```{r}
+# Short summary
+summary(sim_data)
+```
+```{r}
+# Any Missing Values?
+sim_data <- na.omit(sim_data)
+sum(is.na(sim_data))
+```
+```{r}
+status(sim_data)
+```
+## Data Cleaning
+```{r warning=FALSE}
+# Changing Validity Days & Price data type to numeric
+sim_data$Validity.Days <- as.numeric(as.character(sim_data$Validity.Days))
+sim_data$Price <- as.numeric(as.character(sim_data$Price))
+head(sim_data)
+```
+```{r}
+# Checking data type change
+glimpse(sim_data)
+```
+
+# Quick EDA
+```{r warning=FALSE}
+# SIM Types
+sim_data %>%
+  ggplot(aes(y = SIM.Type)) +
+  geom_bar(fill = "royalblue", na.rm = TRUE) +
+  geom_text(stat='count', 
+            aes(label=..count..), 
+            hjust=1.29, size=5, color = "white") +
+  labs(title="Different Sim Types",
+       x ="Frequency", 
+       y = "Sim Type")
+```
+
+```{r}
+# Distinct Sim Operators
+sim_data %>%
+  ggplot(aes(y = SIM.Operator)) +
+  geom_bar(fill = "royalblue", na.rm = TRUE) +
+  geom_text(stat='count', 
+            aes(label=..count..), 
+            hjust=2, size=5, color = "white") +
+  labs(title="Different Sim Operators",
+       x ="Frequency", 
+       y = "Sim Operators")
+```
+
+```{r}
+# Distinct Sim Packages
+sim_data %>%
+  ggplot(aes(x=Packages.Type)) +
+  geom_bar(fill = "royalblue", na.rm = TRUE) +
+  geom_text(stat='count', 
+            aes(label=..count..), 
+            vjust=1.5, size=5, color = "white") + 
+  labs(title="Different Packages",
+       x ="Package Types", 
+       y = "Frequency") 
+```
+
+```{r}
+# Price vs Package outliers
+sim_data %>%
+  ggplot(aes(x=Price, y=Packages.Type)) +
+  geom_boxplot(fill = "royalblue", na.rm = TRUE) +
+  labs(title="Outliers in different packages",
+       x ="Price", 
+       y = "Packages Type")
+```
+
+# Outlier Remove
+```{r}
+# Length
+print(length(sim_data$Price))
+
+# Outlier 
+outliers <- boxplot(sim_data$Price, plot = FALSE)$out
+outliers2 <- boxplot(sim_data$Validity.Days, plot = FALSE)$out
+
+# Creating new data frame without outliers
+sim_data2 <- sim_data[-which(sim_data$Price %in% outliers),]
+sim_data2 <- sim_data[-which(sim_data$Validity.Days %in% outliers2),]
+
+# Length After outliers reduction
+print(length(sim_data2$Price))
+```
+
+```{r}
+sim_data2$Price[is.na(sim_data2$Price)] <- 0
+sim_data2$Validity.Days[is.na(sim_data2$Validity.Days)] <- 0
+```
+
+```{r}
+# Price variations 
+sim_data2 %>%
+  ggplot(aes(Price)) +
+  geom_histogram(na.rm = TRUE, binwidth = 40, fill = "royalblue") +
+  labs(title = "Price Variation", 
+       x="Price of the packages", y="Frequency of packages")
+```
+
+**Here, Looks like most of the packages are in affordable price range.**
+
+## Regression Model Analysis
+```{r}
+# Price and Validity days plot
+plot(sim_data2$Price, sim_data2$Validity.Days, main = "Price VS Validity days")
+```
+```{r}
+# Correlation with this two metrics
+cor(sim_data2$Price, sim_data2$Validity.Days)
+```
+
+**So, there is a positive correlation**
+
+```{r}
+# Creating a regression model to predict price based on validity days
+model = lm(Price ~ Validity.Days, data=sim_data2)
+summary(model)
+```
+
+```{r}
+# Attributes of the model
+attributes(model)
+```
+
+```{r}
+# Predicted Values by the model
+model$fitted.values
+```
+
+```{r}
+# Model Coefficients
+model$coefficients
+```
+
+```{r warning=FALSE, message=FALSE}
+# Plot the regression model
+par(mfrow=c(2,2))
+plot(model)
+par(mfrow=c(1,1))
+```
+
+```{r}
+anova(model)
+```
+
+
+
+
